@@ -1,14 +1,46 @@
-# TODO
+# drone-kubectl-buildkit
 
-Install buildkit-cli-for-kubectl on gir and checkout mediabrainz.  Attempt to `kubectl build -t mediabrainz:test -f Dockerfile ./`
+Why?  Because you want to build an image, run tests in it on a k8s cluster, then deploy that same image to the same cluster.  It's going to go faster if aren't pushing and pulling from a registry.
 
-If that works figure out how RBAC works and how to create a limited user that can build images
+<https://github.com/vmware-tanzu/buildkit-cli-for-kubectl>
 
-populate a k8s secret with that
+## TODO
 
-build plugin image that reads from secret and builds image
+- Build command that uses buildkit running on git.  iterate.
+- github
+- docker hub
 
-change mediabrainz to use that
+## vars
 
+PLUGIN_NAMESPACE
+PLUGIN_KUBERNETES_USER
+PLUGIN_KUBERNETES_TOKEN
+PLUGIN_KUBERNETES_SERVER
+PLUGIN_KUBERNETES_CERT
 
-bench
+## limitations
+
+- all registries need a k8s Secret with the auth it to push images too.  Thus we won't support
+  - PLUGIN_REGISTRY
+  - PLUGIN_USERNAME
+  - PLUGIN_PASSWORD
+
+## build
+
+```shell
+docker build . -t myers/drone-kubectl-buildkit
+```
+
+## test
+
+```shell
+docker run --rm \
+    -e PLUGIN_TAGS=1.2,latest \
+    -e PLUGIN_DOCKERFILE=/drone/Dockerfile \
+    -e PLUGIN_REPO=foo/bar \
+    -e PLUGIN_USERNAME=foo \
+    -e PLUGIN_PASSWORD=bar \
+    -v $(pwd):/drone \
+    -w /drone \
+    myers/drone-kubectl-buildkit:latest
+```

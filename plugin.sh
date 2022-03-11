@@ -1,30 +1,30 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
-
-if [ -z ${PLUGIN_NAMESPACE} ]; then
+# PLUGIN_NAMESPACE=${PLUGIN_NAMESPACE:-default}
+if [ -z ${PLUGIN_NAMESPACE+x} ]; then
   PLUGIN_NAMESPACE="default"
 fi
 
-if [ -z ${PLUGIN_KUBERNETES_USER} ]; then
+if [ -z ${PLUGIN_KUBERNETES_USER+x} ]; then
   PLUGIN_KUBERNETES_USER="default"
 fi
 
-if [ ! -z ${PLUGIN_KUBERNETES_TOKEN} ]; then
+if [ ! -z ${PLUGIN_KUBERNETES_TOKEN+x} ]; then
   KUBERNETES_TOKEN=$PLUGIN_KUBERNETES_TOKEN
 fi
 
-if [ ! -z ${PLUGIN_KUBERNETES_SERVER} ]; then
+if [ ! -z ${PLUGIN_KUBERNETES_SERVER+x} ]; then
   KUBERNETES_SERVER=$PLUGIN_KUBERNETES_SERVER
 fi
 
-if [ ! -z ${PLUGIN_KUBERNETES_CERT} ]; then
+if [ ! -z ${PLUGIN_KUBERNETES_CERT+x} ]; then
   KUBERNETES_CERT=${PLUGIN_KUBERNETES_CERT}
 fi
 
 kubectl config set-credentials default --token=${KUBERNETES_TOKEN}
-if [ ! -z ${KUBERNETES_CERT} ]; then
+if [ ! -z ${KUBERNETES_CERT+x} ]; then
   echo ${KUBERNETES_CERT} | base64 -d > ca.crt
   kubectl config set-cluster default --server=${KUBERNETES_SERVER} --certificate-authority=ca.crt
 else
@@ -34,27 +34,6 @@ fi
 
 kubectl config set-context default --cluster=default --user=${PLUGIN_KUBERNETES_USER}
 kubectl config use-context default
-
-REGISTRY=${PLUGIN_REGISTRY:-index.docker.io}
-
-if [ "${PLUGIN_USERNAME:-}" ] || [ "${PLUGIN_PASSWORD:-}" ]; then
-    DOCKER_AUTH=`echo -n "${PLUGIN_USERNAME}:${PLUGIN_PASSWORD}" | base64 | tr -d "\n"`
-
-    cat > /kaniko/.docker/config.json <<DOCKERJSON
-{
-    "auths": {
-        "${REGISTRY}": {
-            "auth": "${DOCKER_AUTH}"
-        }
-    }
-}
-DOCKERJSON
-fi
-
-if [ "${PLUGIN_JSON_KEY:-}" ];then
-    echo "${PLUGIN_JSON_KEY}" > /kaniko/gcr.json
-    export GOOGLE_APPLICATION_CREDENTIALS=/kaniko/gcr.json
-fi
 
 DOCKERFILE=${PLUGIN_DOCKERFILE:-Dockerfile}
 CONTEXT=${PLUGIN_CONTEXT:-$PWD}

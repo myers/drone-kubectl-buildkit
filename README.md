@@ -1,6 +1,6 @@
 # drone-kubectl-buildkit
 
-Why?  Because you want to build an image, run tests in it on a k8s cluster, then deploy that same image to the same cluster.  It's going to go faster if aren't pushing and pulling from a registry.
+Why?  Because you want to build an image, run tests in that image in your k8s cluster, then deploy that same image to the same cluster.  It's going to go faster if aren't pushing and pulling from a registry.
 
 <https://github.com/vmware-tanzu/buildkit-cli-for-kubectl>
 
@@ -9,6 +9,9 @@ Why?  Because you want to build an image, run tests in it on a k8s cluster, then
 - Build command that uses buildkit running on git.  iterate.
 - github
 - docker hub
+
+
+
 
 ## vars
 
@@ -35,11 +38,10 @@ docker build . -t myers/drone-kubectl-buildkit
 
 ```shell
 docker run --rm \
-    -e PLUGIN_TAGS=1.2,latest \
-    -e PLUGIN_DOCKERFILE=/drone/Dockerfile \
-    -e PLUGIN_REPO=foo/bar \
-    -e PLUGIN_USERNAME=foo \
-    -e PLUGIN_PASSWORD=bar \
+    -e PLUGIN_KUBERNETES_SERVER=https://192.168.42.8:6443
+    -e PLUGIN_KUBERNETES_TOKEN=
+    -e PLUGIN_DOCKERFILE=/drone/Dockerfile.test \
+    -e PLUGIN_REPO=registry.monoloco.net/foo/bar \
     -v $(pwd):/drone \
     -w /drone \
     myers/drone-kubectl-buildkit:latest

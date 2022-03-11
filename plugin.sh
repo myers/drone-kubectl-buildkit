@@ -2,14 +2,11 @@
 
 set -euo pipefail
 
-# PLUGIN_NAMESPACE=${PLUGIN_NAMESPACE:-default}
-if [ -z ${PLUGIN_NAMESPACE+x} ]; then
-  PLUGIN_NAMESPACE="default"
-fi
+set -x
 
-if [ -z ${PLUGIN_KUBERNETES_USER+x} ]; then
-  PLUGIN_KUBERNETES_USER="default"
-fi
+PLUGIN_NAMESPACE=${PLUGIN_NAMESPACE:-default}
+PLUGIN_KUBERNETES_USER=${PLUGIN_KUBERNETES_USER:-default}
+REGISTRY=${PLUGIN_REGISTRY:-docker.io}
 
 if [ ! -z ${PLUGIN_KUBERNETES_TOKEN+x} ]; then
   KUBERNETES_TOKEN=$PLUGIN_KUBERNETES_TOKEN
@@ -25,8 +22,9 @@ fi
 
 kubectl config set-credentials default --token=${KUBERNETES_TOKEN}
 if [ ! -z ${KUBERNETES_CERT+x} ]; then
-  echo ${KUBERNETES_CERT} | base64 -d > ca.crt
-  kubectl config set-cluster default --server=${KUBERNETES_SERVER} --certificate-authority=ca.crt
+  mkdir -p ~/.kube
+  echo ${KUBERNETES_CERT} | base64 -d > /root/.kube/ca.crt
+  kubectl config set-cluster default --server=${KUBERNETES_SERVER} --certificate-authority=/root/.kube/ca.crt
 else
   echo "WARNING: Using insecure connection to cluster"
   kubectl config set-cluster default --server=${KUBERNETES_SERVER} --insecure-skip-tls-verify=true
@@ -44,24 +42,8 @@ if [[ -n "${PLUGIN_TARGET:-}" ]]; then
     TARGET="--target=${PLUGIN_TARGET}"
 fi
 
-if [[ "${PLUGIN_SKIP_TLS_VERIFY:-}" == "true" ]]; then
-    EXTRA_OPTS="--skip-tls-verify=true"
-fi
-
-if [[ "${PLUGIN_CACHE:-}" == "true" ]]; then
-    CACHE="--cache=true"
-fi
-
-if [ -n "${PLUGIN_CACHE_REPO:-}" ]; then
-    CACHE_REPO="--cache-repo=${REGISTRY}/${PLUGIN_CACHE_REPO}"
-fi
-
-if [ -n "${PLUGIN_CACHE_TTL:-}" ]; then
-    CACHE_TTL="--cache-ttl=${PLUGIN_CACHE_TTL}"
-fi
-
 if [ -n "${PLUGIN_BUILD_ARGS:-}" ]; then
-    BUILD_ARGS=$(echo "${PLUGIN_BUILD_ARGS}" | tr ',' '\n' | while read build_arg; do echo "--build-arg=${build_arg}"; done)
+    BUILD_ARGS=$(echo "${PLUGIN_BUILD_ARGS}" | tr ',' '\n' | while read build_arg; do echo "--build-arg ${build_arg}"; done)
 fi
 if [ -n "${PLUGIN_BUILD_ARGS_FROM_ENV:-}" ]; then
     BUILD_ARGS_FROM_ENV=$(echo "${PLUGIN_BUILD_ARGS_FROM_ENV}" | tr ',' '\n' | while read build_arg; do echo "--build-arg ${build_arg}=$(eval "echo \$$build_arg")"; done)
@@ -91,24 +73,31 @@ if [[ "${PLUGIN_AUTO_TAG:-}" == "true" ]]; then
     fi  
 fi
 if [ -n "${PLUGIN_TAGS:-}" ]; then
-    DESTINATIONS=$(echo "${PLUGIN_TAGS}" | tr ',' '\n' | while read tag; do echo "--destination=${REGISTRY}/${PLUGIN_REPO}:${tag} "; done)
+    DESTINATIONS=$(echo "${PLUGIN_TAGS}" | tr ',' '\n' | while read tag; do echo "--tag ${REGISTRY}/${PLUGIN_REPO}:${tag} "; done)
 elif [ -f .tags ]; then
-    DESTINATIONS=$(cat .tags| tr ',' '\n' | while read tag; do echo "--destination=${REGISTRY}/${PLUGIN_REPO}:${tag} "; done)
+    DESTINATIONS=$(cat .tags| tr ',' '\n' | while read tag; do echo "--tag ${REGISTRY}/${PLUGIN_REPO}:${tag} "; done)
 elif [ -n "${PLUGIN_REPO:-}" ]; then
-    DESTINATIONS="--destination=${REGISTRY}/${PLUGIN_REPO}:latest"
+    DESTINATIONS="--tag ${REGISTRY}/${PLUGIN_REPO}:latest"
 else
     DESTINATIONS="--no-push"
     # Cache is not valid with --no-push
     CACHE=""
 fi
-/kaniko/executor -v ${LOG} \
-    --context=${CONTEXT} \
-    --dockerfile=${DOCKERFILE} \
-    ${EXTRA_OPTS} \
-    ${DESTINATIONS} \
-    ${CACHE:-} \
-    ${CACHE_TTL:-} \
-    ${CACHE_REPO:-} \
-    ${TARGET:-} \
-    ${BUILD_ARGS:-} \
-    ${BUILD_ARGS_FROM_ENV:-}
+
+# /kaniko/executor -v ${LOG} \
+#     --context=${CONTEXT} \
+#     --dockerfile=${DOCKERFILE} \
+#     ${EXTRA_OPTS} \
+#     ${DESTINATIONS} \
+#     ${CACHE:-} \
+#     ${CACHE_TTL:-} \
+#     ${CACHE_REPO:-} \
+#     ${TARGET:-} \
+#     ${BUILD_ARGS:-} \
+#     ${BUILD_ARGS_FROM_ENV:-}
+
+kubectl build \
+  --file ${DOCKERFILE} \
+  ${BUILD_ARGS:-} \
+  ${DESTINATIONS} \
+  ${CONTEXT}

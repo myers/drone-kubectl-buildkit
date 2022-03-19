@@ -15,7 +15,6 @@ cat /var/run/secrets/kubernetes.io/serviceaccount/*
 
 PLUGIN_NAMESPACE=${PLUGIN_NAMESPACE:-${CURRENT_NAMESPACE}}
 PLUGIN_KUBERNETES_USER=${PLUGIN_KUBERNETES_USER:-default}
-REGISTRY=${PLUGIN_REGISTRY:-docker.io}
 
 if [ ! -z ${PLUGIN_KUBERNETES_TOKEN+x} ]; then
   KUBERNETES_TOKEN=${PLUGIN_KUBERNETES_TOKEN}
@@ -92,11 +91,11 @@ if [[ "${PLUGIN_AUTO_TAG:-}" == "true" ]]; then
     fi  
 fi
 if [ -n "${PLUGIN_TAGS:-}" ]; then
-    DESTINATIONS=$(echo "${PLUGIN_TAGS}" | tr ',' '\n' | while read tag; do echo "--tag ${REGISTRY}/${PLUGIN_REPO}:${tag} "; done)
+    DESTINATIONS=$(echo "${PLUGIN_TAGS}" | tr ',' '\n' | while read tag; do echo "--tag ${PLUGIN_REPO}:${tag} "; done)
 elif [ -f .tags ]; then
-    DESTINATIONS=$(cat .tags| tr ',' '\n' | while read tag; do echo "--tag ${REGISTRY}/${PLUGIN_REPO}:${tag} "; done)
+    DESTINATIONS=$(cat .tags| tr ',' '\n' | while read tag; do echo "--tag ${PLUGIN_REPO}:${tag} "; done)
 elif [ -n "${PLUGIN_REPO:-}" ]; then
-    DESTINATIONS="--tag ${REGISTRY}/${PLUGIN_REPO}:latest"
+    DESTINATIONS="--tag ${PLUGIN_REPO}:latest"
 else
     DESTINATIONS="--no-push"
     # Cache is not valid with --no-push

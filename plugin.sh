@@ -4,16 +4,30 @@ set -euo pipefail
 
 set -x
 
-PLUGIN_NAMESPACE=${PLUGIN_NAMESPACE:-default}
+
+CURRENT_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+CURRENT_NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+DEFAULT_SERVER=https://kubernetes.default
+
+ls -l /var/run/secrets/kubernetes.io/serviceaccount
+
+cat /var/run/secrets/kubernetes.io/serviceaccount/*
+
+PLUGIN_NAMESPACE=${PLUGIN_NAMESPACE:-${CURRENT_NAMESPACE}}
 PLUGIN_KUBERNETES_USER=${PLUGIN_KUBERNETES_USER:-default}
 REGISTRY=${PLUGIN_REGISTRY:-docker.io}
 
 if [ ! -z ${PLUGIN_KUBERNETES_TOKEN+x} ]; then
-  KUBERNETES_TOKEN=$PLUGIN_KUBERNETES_TOKEN
+  KUBERNETES_TOKEN=${PLUGIN_KUBERNETES_TOKEN}
+else
+  KUBERNETES_TOKEN=${CURRENT_TOKEN}
 fi
 
+KUBERNETES_SERVER="${KUBERNETES_SERVER:-}"
 if [ ! -z ${PLUGIN_KUBERNETES_SERVER+x} ]; then
   KUBERNETES_SERVER=$PLUGIN_KUBERNETES_SERVER
+else
+  KUBERNETES_SERVER=${DEFAULT_SERVER}
 fi
 
 if [ ! -z ${PLUGIN_KUBERNETES_CERT+x} ]; then
@@ -26,8 +40,7 @@ if [ ! -z ${KUBERNETES_CERT+x} ]; then
   echo ${KUBERNETES_CERT} | base64 -d > /root/.kube/ca.crt
   kubectl config set-cluster default --server=${KUBERNETES_SERVER} --certificate-authority=/root/.kube/ca.crt
 else
-  echo "WARNING: Using insecure connection to cluster"
-  kubectl config set-cluster default --server=${KUBERNETES_SERVER} --insecure-skip-tls-verify=true
+  kubectl config set-cluster default --server=${KUBERNETES_SERVER} --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 fi
 
 kubectl config set-context default --cluster=default --user=${PLUGIN_KUBERNETES_USER}
@@ -37,6 +50,12 @@ DOCKERFILE=${PLUGIN_DOCKERFILE:-Dockerfile}
 CONTEXT=${PLUGIN_CONTEXT:-$PWD}
 LOG=${PLUGIN_LOG:-info}
 EXTRA_OPTS=""
+
+PUSH=""
+
+if [[ "${PLUGIN_PUSH:-}" == "true" ]]; then
+    PUSH="--push"
+fi
 
 if [[ -n "${PLUGIN_TARGET:-}" ]]; then
     TARGET="--target=${PLUGIN_TARGET}"
@@ -96,8 +115,12 @@ fi
 #     ${BUILD_ARGS:-} \
 #     ${BUILD_ARGS_FROM_ENV:-}
 
+kubectl get --namespace ${PLUGIN_NAMESPACE} pods,deployments
+
 kubectl build \
+  --namespace ${PLUGIN_NAMESPACE} \
   --file ${DOCKERFILE} \
   ${BUILD_ARGS:-} \
   ${DESTINATIONS} \
+  ${PUSH} \
   ${CONTEXT}

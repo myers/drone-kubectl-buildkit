@@ -2,16 +2,16 @@
 
 set -euo pipefail
 
-set -x
+if [ ! -z ${PLUGIN_DEBUG+x} ]; then
+  kubectl get --namespace ${PLUGIN_NAMESPACE} pods,deployments
+
+  set -x
+fi
 
 
 CURRENT_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
 CURRENT_NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
 DEFAULT_SERVER=https://kubernetes.default
-
-ls -l /var/run/secrets/kubernetes.io/serviceaccount
-
-cat /var/run/secrets/kubernetes.io/serviceaccount/*
 
 PLUGIN_NAMESPACE=${PLUGIN_NAMESPACE:-${CURRENT_NAMESPACE}}
 PLUGIN_KUBERNETES_USER=${PLUGIN_KUBERNETES_USER:-default}
@@ -29,12 +29,8 @@ else
   KUBERNETES_SERVER=${DEFAULT_SERVER}
 fi
 
-if [ ! -z ${PLUGIN_KUBERNETES_CERT+x} ]; then
-  KUBERNETES_CERT=${PLUGIN_KUBERNETES_CERT}
-fi
-
 kubectl config set-credentials default --token=${KUBERNETES_TOKEN}
-if [ ! -z ${KUBERNETES_CERT+x} ]; then
+if [ ! -z ${PLUGIN_KUBERNETES_CERT+x} ]; then
   mkdir -p ~/.kube
   echo ${KUBERNETES_CERT} | base64 -d > /root/.kube/ca.crt
   kubectl config set-cluster default --server=${KUBERNETES_SERVER} --certificate-authority=/root/.kube/ca.crt
@@ -47,7 +43,6 @@ kubectl config use-context default
 
 DOCKERFILE=${PLUGIN_DOCKERFILE:-Dockerfile}
 CONTEXT=${PLUGIN_CONTEXT:-$PWD}
-LOG=${PLUGIN_LOG:-info}
 EXTRA_OPTS=""
 
 PUSH=""
@@ -101,20 +96,6 @@ else
     # Cache is not valid with --no-push
     CACHE=""
 fi
-
-# /kaniko/executor -v ${LOG} \
-#     --context=${CONTEXT} \
-#     --dockerfile=${DOCKERFILE} \
-#     ${EXTRA_OPTS} \
-#     ${DESTINATIONS} \
-#     ${CACHE:-} \
-#     ${CACHE_TTL:-} \
-#     ${CACHE_REPO:-} \
-#     ${TARGET:-} \
-#     ${BUILD_ARGS:-} \
-#     ${BUILD_ARGS_FROM_ENV:-}
-
-kubectl get --namespace ${PLUGIN_NAMESPACE} pods,deployments
 
 kubectl build \
   --namespace ${PLUGIN_NAMESPACE} \

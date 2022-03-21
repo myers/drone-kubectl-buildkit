@@ -3,8 +3,6 @@
 set -euo pipefail
 
 if [ ! -z ${PLUGIN_DEBUG+x} ]; then
-  kubectl get --namespace ${PLUGIN_NAMESPACE} pods,deployments
-
   set -x
 fi
 
@@ -15,6 +13,10 @@ DEFAULT_SERVER=https://kubernetes.default
 
 PLUGIN_NAMESPACE=${PLUGIN_NAMESPACE:-${CURRENT_NAMESPACE}}
 PLUGIN_KUBERNETES_USER=${PLUGIN_KUBERNETES_USER:-default}
+
+if [ ! -z ${PLUGIN_DEBUG+x} ]; then
+  kubectl get --namespace ${PLUGIN_NAMESPACE} pods,deployments
+fi
 
 if [ ! -z ${PLUGIN_KUBERNETES_TOKEN+x} ]; then
   KUBERNETES_TOKEN=${PLUGIN_KUBERNETES_TOKEN}
